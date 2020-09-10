@@ -29,19 +29,16 @@
 
 (ns matilda.data
   (:gen-class)
-  (:require [mount.core :refer [defstate]]
-            [matilda.config :refer [ConfMgr]]
+  (:require [matilda.config :refer [ConfMgr]]
             [omniconf.core :as cfg]
-            [matilda.queries :refer [query-data]]
-            [matilda.db :refer [result->map]]
-            [matilda.config :refer [ConfMgr]]))
+            [matilda.queries :refer [query-data]]))
 
 
-(def subject-ont-iri "http://purl.obolibrary.org/obo/NCIT_C48910")
+(def subject-ont-iri "http://purl.bioontology.org/ontology/SNOMEDCT/116154003")
 (def forename-iri "http://purl.obolibrary.org/obo/NCIT_C40974")
 (def surname-iri "http://purl.obolibrary.org/obo/NCIT_C40975")
-(def condition-iri "http://purl.obolibrary.org/obo/NCIT_C2991")
-(def drug-iri "http://purl.obolibrary.org/obo/NCIT_C459")
+(def condition-iri "http://purl.bioontology.org/ontology/SNOMEDCT/417662000")
+(def drug-iri "http://purl.bioontology.org/ontology/SNOMEDCT/438553004")
 (def race-iri "http://purl.obolibrary.org/obo/NCIT_C17049")
 (def age-iri "http://purl.obolibrary.org/obo/NCIT_C154631")
 (def sex-iri "http://purl.obolibrary.org/obo/NCIT_C28421")

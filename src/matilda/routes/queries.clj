@@ -30,45 +30,38 @@
 
 (ns matilda.routes.queries
   (:gen-class)
-  (:require [mount.core :refer [defstate]]
-            [reitit.ring :as ring]
-            [clojure.tools.logging :as log]
-            [matilda.term :refer [search-drug search-condition search-site]]
+  (:require [matilda.term :refer [search-terms]]
             [matilda.queries :refer [cui->uri
                                      query-data
                                      query-data-j
-                                     json->sparql
-                                     describe-item]]))
+                                     query-data-grouped
+                                     describe-item]]
+            [matilda.sparql :refer [json->sparql]]))
 
-(defn drug-term-query-handler
-  [request]
-  (let [results (search-drug (get-in request [:path-params :term]))]
-    {:status 200
-      :body results}))
+(defn term-pair->term-info
+  [[name uri]]
+  (merge (describe-item uri)
+         {:name name
+          :uri uri}))
 
-(defn condition-term-query-handler
+(defn term-query-handler
   [request]
-  (let [results (search-condition (get-in request [:path-params :term]))]
+  (let [terms (search-terms (get-in request [:path-params :term]))
+        terms-with-info (map term-pair->term-info terms)]
     {:status 200
-      :body results}))
-
-(defn site-term-query-handler
-  [request]
-  (let [results (search-site (get-in request [:path-params :term]))]
-    {:status 200
-      :body results}))
+     :body terms-with-info}))
 
 (defn json-query-handler
   [request]
   (let [json-query (get-in request [:body "query"])
-        query-str (json->sparql json-query)]
+        query-str (json->sparql json-query)
+        group-key (get-in request [:body "groupKey"])]
     {:status 200
-     :body {:results (query-data query-str)}}))
+     :body {:results (query-data-grouped query-str group-key)}}))
 
 (defn sparql-query-handler
   [request]
-  (let [query-str (get-in request [:body "query"])
-        id (get-in request [:body "id"])]
+  (let [query-str (get-in request [:body "query"])]
     {:status 200
      :body {:results (query-data query-str)}}))
 
@@ -96,20 +89,17 @@
 
 (def query-routes
   [["/query"
-    ["/term/drug/:term" {:get {:parameters {:path {:term string?}}
-                          :handler drug-term-query-handler}}]
-    ["/term/condition/:term" {:get {:parameters {:path {:term string?}}
-                              :handler condition-term-query-handler}}]
-    ["/term/site/:term" {:get {:parameters {:path {:term string?}}
-                                    :handler site-term-query-handler}}]
+    ["/term/:term" {:get {:parameters {:path {:term string?}}
+                          :handler term-query-handler}}]
     ["/describe"
-     ["/uri" {:post {:parameters {:body {:url string?}}
+     ["/uri" {:post {:parameters {:body {:uri string?}}
                      :handler describe-uri-handler}}]
      ["/cui/:cui" {:get {:parameters {:path {:cui string?}}
-                          :handler describe-cui-handler}}]]
-    ["/json" {:post {:parameters {:body {:query map?}}
+                         :handler describe-cui-handler}}]]
+    ["/json" {:post {:parameters {:body {:query map?
+                                         :group-key string?}}
                      :handler json-query-handler}}]
     ["/sparql" {:post {:parameters {:body {:query string?}}
                        :handler sparql-query-handler}}]
     ["/sparqlj" {:post {:parameters {:body {:query string?}}
-                       :handler sparql-query-handler-j}}]]])
+                        :handler sparql-query-handler-j}}]]])

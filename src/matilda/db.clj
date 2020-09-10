@@ -38,7 +38,7 @@
   (:require [mount.core :refer [defstate]]
             [matilda.config :refer [ConfMgr]]
             [omniconf.core :as cfg]
-            [cheshire.core :refer :all]
+            [cheshire.core :refer [parse-string]]
             [clojure.string :as str]
             [clojure.tools.logging :as log]))
 

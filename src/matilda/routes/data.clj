@@ -33,7 +33,7 @@
   (:require [matilda.data :as data]))
 
 (defn data-list-handler
-  [request]
+  [_]
   {:status 200
    :body (data/list-datasets)})
 
@@ -43,7 +43,7 @@
     (data/get-dataset dataset-id)))
 
 (defn list-patients-handler
-  [request]
+  [_]
   (let [patients (data/list-patients)]
     {:status 200
       :body patients}))

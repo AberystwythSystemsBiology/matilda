@@ -31,6 +31,7 @@
 (ns matilda.queries
   (:gen-class)
   (:require [omniconf.core :as cfg]
+            [clojure.string :refer [join]]
             [matilda.db :refer [query-db 
                                 query-db-coalesce
                                 query-db-group
@@ -43,7 +44,7 @@
 (defn make-query
   [prefixes
    & chonks]
-  (clojure.string/join "\n"
+  (join "\n"
     `("PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
       "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>"
       "PREFIX rxnorm: <http://purl.bioontology.org/ontology/RXNORM/>"
@@ -63,10 +64,12 @@
   [query-str]
   (query-db-as-json query-str))
 
-
-(defn json->sparql
-  [json]
-  (throw (UnsupportedOperationException.)))
+(defn query-data-grouped
+  [query-str group-key]
+  (let [results (query-db-as-json query-str)
+        grouped-bindings (group-by #(get-in %1 [group-key "value"])
+                                   (get-in results ["results" "bindings"]))]
+    (assoc-in results ["results" "bindings"] grouped-bindings)))
 
 (defn describe-query
   [uri]
