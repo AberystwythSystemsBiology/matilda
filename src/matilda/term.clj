@@ -30,14 +30,16 @@
 
 (ns matilda.term
   (:gen-class)
-  (:import [java.io FileNotFoundException]
-           [SymSpell SymSpell])
-  (:require [cheshire.core :refer [generate-stream parse-stream]]
+  (:import [SymSpell SymSpell]
+           [org.apache.jena.query ReadWrite QueryFactory QueryExecutionFactory])
+  (:require [clojure.data.csv :as csv]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [mount.core :refer [defstate]]
             [clojure.java.io :as io]
             [omniconf.core :as cfg]
             [matilda.config :refer [ConfMgr]]
+            [matilda.db :refer [DbCon with-dataset result->map]]
             [matilda.queries :refer [query-data make-query]]))
 
 
@@ -45,55 +47,80 @@
 (def root-condition "http://purl.bioontology.org/ontology/SNOMEDCT/404684003")
 (def root-finding "http://purl.bioontology.org/ontology/SNOMEDCT/has_finding_site")
 
-(defn make-dict-from-terms
-  [terms]
-  (let [symspell (SymSpell. -1 2 -1 1)]
-    (doall
-     (->> terms
-          (map (fn [[term labels]]
-                 (->> labels
-                      (map (fn [label]
-                             (.createDictionaryEntry symspell
-                                                     label
-                                                     1
-                                                     nil)
-                             {label term}))
-                      (reduce merge))))
-          (reduce merge)
-          (vector symspell)))))
+(defn with-seqs [f dst q] 
+  (loop [xs q] 
+    (let [[hd tl] (split-at dst xs)]
+      (when-not (empty? hd)
+        (f hd)
+        (recur tl)))))
 
-(defn get-term-labels
-  []
-  (let [query-str (make-query {}
-                              "{ ?iri rdfs:label ?label } "
-                              "UNION"
-                              "{ ?iri skos:prefLabel ?label }"
-                              "UNION"
-                              "{ ?iri skos:altLabel ?label }")
-        result (query-data query-str)]
-    (reduce (fn [terms {iri "?iri" label "?label"}]
-              (merge-with into terms {iri [(.toLowerCase label)]}))
-            {}
-            result)))
+(defn result->csv-row
+  "Turns a single row of a label query into a vector for CSV output"
+  [{iri "?iri" label "?label"}]
+    [iri (.toLowerCase label)])
 
-(defn load-or-make-dict
-  [infile]
-  (try
-    (with-open [infile-reader (io/reader infile)]
-      (log/info "Term file find, loading...")
-      (let [json (parse-stream infile-reader)
-            [symspell term-dict] (make-dict-from-terms json)]
-        (log/info "Created symspell/term-dict")
-        [symspell term-dict]))
-    (catch FileNotFoundException _
-      (log/info "No term file find, populating...")
-      (let [terms (get-term-labels)
-            [symspell term-dict] (make-dict-from-terms terms)]
-        (log/info "Created symspell/term-dict")
-        (generate-stream terms
-                         (io/writer infile))
-        (log/info "Stored term file to disk")
-        [symspell term-dict]))))
+(defn get-and-write-terms
+  [out-file]
+  (with-open [out (io/writer out-file)]
+    (with-dataset DbCon ReadWrite/READ
+      (let [model (.getDefaultModel DbCon)
+            query-str (make-query {}
+                                  "{ ?iri rdfs:label ?label } "
+                                  "UNION"
+                                  "{ ?iri skos:prefLabel ?label }"
+                                  "UNION"
+                                  "{ ?iri skos:altLabel ?label }")
+            query (QueryFactory/create query-str)
+            query-exec (QueryExecutionFactory/create query model)
+            results (iterator-seq (.execSelect query-exec))]
+        (as-> results r
+          (map result->map r)
+          (map result->csv-row r)
+          (csv/write-csv out r :separator \tab))))))
+
+(defn symspell-from-jdbc
+  [db-spec]
+  (reduce
+   (fn [symspell {:keys [label]}]
+     (.createDictionaryEntry symspell label 1 nil)
+     symspell)
+   (SymSpell. -1 2 -1 1)
+   (jdbc/reducible-query
+    db-spec
+    ["SELECT label FROM terms"]
+    {:raw? true})))
+
+;; db-s {:dbtype "sqlite" :dbname "/home/rob/matilda-dirs/clj/terms/terms.sqlite"}
+(defn get-and-write-terms-db!
+  [db-spec]
+  (with-dataset DbCon ReadWrite/READ
+    (let [model (.getDefaultModel DbCon)
+          query-str (make-query {}
+                                "{ ?iri rdfs:label ?label } "
+                                "UNION"
+                                "{ ?iri skos:prefLabel ?label }"
+                                "UNION"
+                                "{ ?iri skos:altLabel ?label }")
+          query (QueryFactory/create query-str)
+          query-exec (QueryExecutionFactory/create query model)
+          results (iterator-seq (.execSelect query-exec))]
+      (jdbc/db-do-commands db-spec
+       ["CREATE VIRTUAL TABLE terms USING fts5
+         (uri, label, tokenize='porter ascii')"])
+      (as-> results r
+        (map result->map r)
+        (map result->csv-row r)
+        (with-seqs #(jdbc/insert-multi! db-spec :terms nil %1) 10000 r)))))
+
+(defn term-table-exists?
+  [db-spec]
+  (seq (jdbc/query db-spec ["SELECT name FROM sqlite_master WHERE type='table' AND name='terms'"])))
+
+(defn load-or-make-terms
+  [db-spec]
+  (when-not (term-table-exists? db-spec)
+    (get-and-write-terms-db! db-spec))
+  (symspell-from-jdbc db-spec))
 
 (def TermSearcher)
 
@@ -101,22 +128,10 @@
   [file-name]
   (format "%s/%s.json" (cfg/get :term-dir) file-name))
 
-; (defn init-terms
-;   []
-;   (let [[drug-symspell drug-terms] 
-;           (load-or-make-dict (term-file "drugs") root-drug)
-;         [finding-symspell finding-terms] 
-;           (load-or-make-dict (term-file "findings") root-finding)
-;         [condition-symspell condition-terms]
-;           (load-or-make-dict (term-file "conditions") root-condition)]
-;    {:drug-terms drug-terms :drug-symspell drug-symspell
-;     :finding-terms finding-terms :finding-symspell finding-symspell
-;     :condition-terms condition-terms :condition-symspell condition-symspell}))
-
 (defn init-terms
   []
-  (let [[symspell terms] (load-or-make-dict (term-file "terms"))]
-    {:symspell symspell :terms terms}))
+  (let [symspell (load-or-make-terms (cfg/get :jdbc))]
+    {:symspell symspell}))
 
 (defn deinit-terms
   []
@@ -125,28 +140,26 @@
 (defstate TermSearcher :start (init-terms)
                        :stop (deinit-terms))
 
+(defn query-terms
+  [db-spec term]
+  (let [matches (jdbc/query db-spec ["SELECT uri, label FROM terms
+                                      WHERE label MATCH ?
+                                      ORDER BY length(label)" term])]
+    matches))
+
+(defn term->uri
+  [db-spec term]
+  (:uri (first (jdbc/query db-spec ["SELECT uri FROM terms WHERE label = ?" term]))))
+
+(defn sym-term->term-pair
+  [db-spec term-obj]
+  (let [term (.term term-obj)]
+    {:uri (term->uri db-spec term) :label term}))
+
 (defn search-terms
   [term]
-  (let [res (.lookup (:symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
-        terms (map #(.term %1) res)]
-    (map #(list %1 (get (:terms TermSearcher) %1)) terms)))
-
-; (defn search-drug
-;   [term]
-;   (let [res (.lookup (:drug-symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
-;         terms (map #(.term %1) res)]
-;     (map #(list %1 (get (:drug-terms TermSearcher) %1)) terms)))
-
-; (defn search-condition
-;   [term]
-;   (let [res (.lookup (:condition-symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
-;         terms (map #(.term %1) res)]
-;     (map #(list %1 (get (:condition-terms TermSearcher) %1)) terms)))
-
-; (defn search-site
-;   [term]
-;   (let [res (.lookup (:finding-symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
-;         terms (map #(.term %1) res)]
-;     (map #(list %1 (get (:finding-terms TermSearcher) %1)) terms)))
-
-            
+  (let [dict-res (.lookup (:symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
+        sym-terms (map #(sym-term->term-pair (cfg/get :jdbc) %1) dict-res)
+        queried-items (query-terms (cfg/get :jdbc) term)
+        terms (distinct (concat sym-terms queried-items))]
+    terms))

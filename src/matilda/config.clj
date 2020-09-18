@@ -42,5 +42,6 @@
   []
   {})
 
+(declare ConfMgr)
 (defstate ConfMgr :start (load-conf)
                   :stop (unload-conf))

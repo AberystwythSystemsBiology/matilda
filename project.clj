@@ -37,7 +37,9 @@
   :ring {:handler matilda.core/app
          :init matilda.core/dev-init}
   :dependencies [[org.clojure/clojure "1.10.0"]
+                 [org.clojure/java.jdbc "0.7.11"]
                  [org.clojure/tools.logging "0.4.0"]
+                 [org.clojure/tools.namespace "1.0.0"]
                  [org.clojure/tools.trace "0.7.9"]
                  [org.clojure/data.csv "0.1.4"]
                  [org.clojure/data.json "0.2.6"]
@@ -54,7 +56,9 @@
                  [org.apache.logging.log4j/log4j-core "2.12.1"]
                  [org.apache.logging.log4j/log4j-api "2.12.1"]
                  [org.apache.logging.log4j/log4j-slf4j-impl "2.12.1"]
-                 [com.grammarly/omniconf "0.3.2"]]
+                 [com.grammarly/omniconf "0.3.2"]
+                 [org.xerial/sqlite-jdbc "3.32.3.2"]]
+  :jvm-opts ["-Xmx10g"]
   :main ^:skip-aot matilda.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})

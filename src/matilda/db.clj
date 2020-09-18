@@ -141,7 +141,6 @@
           query-exec (QueryExecutionFactory/create query model)
           results (doall (iterator-seq (.execSelect query-exec)))
           mapped-results (map result->map results)]
-      (log/info "Query: " query-str "results: " results)
       mapped-results)))
 
 (defn query-db-as-json
@@ -162,9 +161,3 @@
 (defn query-db-group
   [id query-str]
   (group-query-results id (query-db query-str)))
-
-(defn result->map
-  [result]
-  (let [binding (.getBinding result)
-        vars (.vars binding)]
-    (into {} (map #(vector (str %1) (node->value (Var/lookup binding %1))) (iterator-seq vars)))))

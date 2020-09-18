@@ -38,8 +38,8 @@
                                      describe-item]]
             [matilda.sparql :refer [json->sparql]]))
 
-(defn term-pair->term-info
-  [[name uri]]
+(defn term-dict->term-info
+  [{uri :uri name :label}]
   (merge (describe-item uri)
          {:name name
           :uri uri}))
@@ -47,7 +47,7 @@
 (defn term-query-handler
   [request]
   (let [terms (search-terms (get-in request [:path-params :term]))
-        terms-with-info (map term-pair->term-info terms)]
+        terms-with-info (map term-dict->term-info terms)]
     {:status 200
      :body terms-with-info}))
 
@@ -55,7 +55,7 @@
   [request]
   (let [json-query (get-in request [:body "query"])
         query-str (json->sparql json-query)
-        group-key (get-in request [:body "groupKey"])]
+        group-key (get json-query "groupKey")]
     {:status 200
      :body {:results (query-data-grouped query-str group-key)}}))
 
