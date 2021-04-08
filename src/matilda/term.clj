@@ -116,11 +116,10 @@
   [db-spec]
   (seq (jdbc/query db-spec ["SELECT name FROM sqlite_master WHERE type='table' AND name='terms'"])))
 
-(defn load-or-make-terms
+(defn make-term-table-if-not-exists
   [db-spec]
   (when-not (term-table-exists? db-spec)
-    (get-and-write-terms-db! db-spec))
-  (symspell-from-jdbc db-spec))
+    (get-and-write-terms-db! db-spec)))
 
 (def TermSearcher)
 
@@ -130,8 +129,10 @@
 
 (defn init-terms
   []
-  (let [symspell (load-or-make-terms (cfg/get :jdbc))]
-    {:symspell symspell}))
+  (make-term-table-if-not-exists (cfg/get :jdbc))
+  (if (cfg/get :symspell?)
+    {:symspell (symspell-from-jdbc (cfg/get :jdbc))}
+    {}))
 
 (defn deinit-terms
   []
@@ -158,7 +159,9 @@
 
 (defn search-terms
   [term]
-  (let [dict-res (.lookup (:symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
+  (let [dict-res (if (:symspell TermSearcher) 
+                   (.lookup (:symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
+                   [])
         sym-terms (map #(sym-term->term-pair (cfg/get :jdbc) %1) dict-res)
         queried-items (query-terms (cfg/get :jdbc) term)
         terms (distinct (concat sym-terms queried-items))]
