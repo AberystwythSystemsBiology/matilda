@@ -34,6 +34,7 @@
            [org.apache.jena.query Dataset ReadWrite]
            [org.apache.jena.query QueryFactory QueryExecutionFactory ResultSetFormatter]
            [org.apache.jena.sparql.core Var]
+           [org.apache.jena.rdf.model ResourceFactory]
            [java.io ByteArrayOutputStream])
   (:require [mount.core :refer [defstate]]
             [matilda.config :refer [ConfMgr]]
@@ -73,6 +74,18 @@
     (catch Exception e#
       (try (.end ~ds)
            (catch Exception e2# (throw e#))))))
+
+(defn create-literal
+  [v]
+  (ResourceFactory/createTypedLiteral v))
+
+(defn create-property
+  [uri]
+  (ResourceFactory/createProperty uri))
+
+(defn create-resource
+  [uri]
+  (ResourceFactory/createResource uri))
 
 (defn result->map
   [result]
@@ -127,7 +140,7 @@
 (defn query-db-raw
   [query-str]
   (with-dataset DbCon ReadWrite/READ
-    (let [model (.getDefaultModel DbCon)
+    (let [model (.getNamedModel DbCon "urn:x-arq:UnionGraph")
           query (QueryFactory/create query-str)
           query-exec (QueryExecutionFactory/create query model)
           results (iterator-seq (.execSelect query-exec))]
@@ -136,17 +149,17 @@
 (defn query-db
   [query-str]
   (with-dataset DbCon ReadWrite/READ
-    (let [model (.getDefaultModel DbCon)
+    (let [model (.getNamedModel DbCon "urn:x-arq:UnionGraph")
           query (QueryFactory/create query-str)
           query-exec (QueryExecutionFactory/create query model)
-          results (doall (iterator-seq (.execSelect query-exec)))
+          results (iterator-seq (.execSelect query-exec))
           mapped-results (map result->map results)]
-      mapped-results)))
+      (doall mapped-results))))
 
 (defn query-db-as-json
   [query-str]
   (with-dataset DbCon ReadWrite/READ
-    (let [model (.getDefaultModel DbCon)
+    (let [model (.getNamedModel DbCon "urn:x-arq:UnionGraph")
           query (QueryFactory/create query-str)
           query-exec (QueryExecutionFactory/create query model)
           res (.execSelect query-exec)

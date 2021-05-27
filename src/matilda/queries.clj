@@ -46,11 +46,15 @@
    & chonks]
   (join "\n"
     `("PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
+      "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
+      "PREFIX owl: <http://www.w3.org/2002/07/owl#>"
+      "PREFIX dc: <http://purl.org/dc/elements/1.1/>"
       "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>"
       "PREFIX rxnorm: <http://purl.bioontology.org/ontology/RXNORM/>"
       "PREFIX snomed: <http://purl.bioontology.org/ontology/SNOMEDCT/>"
       "PREFIX obo: <http://www.geneontology.org/formats/oboInOwl#>"
       "PREFIX umls: <http://bioportal.bioontology.org/ontologies/umls/>"
+      ~(format "PREFIX matilda: <%s>" (cfg/get :matilda-ont-root))
       ~@(map to-prefix prefixes)
       "SELECT * WHERE {"
       ~@chonks

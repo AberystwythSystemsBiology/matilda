@@ -56,7 +56,7 @@
                  [org.apache.logging.log4j/log4j-core "2.12.1"]
                  [org.apache.logging.log4j/log4j-api "2.12.1"]
                  [org.apache.logging.log4j/log4j-slf4j-impl "2.12.1"]
-                 [com.grammarly/omniconf "0.3.2"]
+                 [com.grammarly/omniconf "0.4.3"]
                  [org.xerial/sqlite-jdbc "3.32.3.2"]]
   :jvm-opts ["-Xmx10g"]
   :main ^:skip-aot matilda.core

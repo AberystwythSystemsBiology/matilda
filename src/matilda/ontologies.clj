@@ -30,26 +30,48 @@
 (ns matilda.ontologies
   (:gen-class)
   (:import [org.apache.jena.query Dataset ReadWrite])
-  (:require [mount.core :refer [defstate]]
+  (:require [clojure.string :as s]
+            [mount.core :refer [defstate]]
             [omniconf.core :as cfg]
             [matilda.config :refer [ConfMgr]]
+            [matilda.queries :refer [make-query query-data]]
             [matilda.db :refer [DbCon with-dataset]]))
+
+
+(defn query-ontologies
+  []
+  (let [qstr  (make-query {}
+                          "?ont rdf:type owl:Ontology ."
+                          "?ont dc:title ?title ."
+                          "?ont dc:description ?desc")]
+    (query-data qstr)))
 
 (defn list-ontologies
   []
-  (let [ontologies (cfg/get :ontologies)]
-    ontologies))
+  (let [ontologies (query-ontologies)]
+    (map (fn [{ont "?ont" title "?title" desc "?desc"}]
+           {:ont ont :title title :desc desc})
+         ontologies)))
+
+(defn delete-ontology
+  [url]
+  (with-dataset DbCon ReadWrite/WRITE
+    (when (.containsNamedModel DbCon url)
+      (.removeNamedModel DbCon url)
+      true)))
 
 (defn load-ontology-by-url
   [url]
   (with-dataset DbCon ReadWrite/WRITE
-    (let [model (.getDefaultModel DbCon)]
-      (.read model url))))
+    (let [model (.getNamedModel DbCon url)]
+      (.read model url)
+      nil)))
 
 (defn load-ontology-file
-  [file-name]
+  [file-name url]
   (with-dataset DbCon ReadWrite/WRITE
-    (let [model (.getDefaultModel DbCon)]
+    (let [model (.getNamedModel DbCon url)]
       (with-open [r (clojure.java.io/input-stream file-name)]
-        (.read model r)))))
+        (.read model r url)
+        nil))))
 
