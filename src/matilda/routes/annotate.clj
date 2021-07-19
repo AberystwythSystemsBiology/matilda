@@ -31,7 +31,7 @@
 (ns matilda.routes.annotate
   (:gen-class)
   (:require [mount.core :refer [defstate]]
-            [cheshire.core :refer :all]
+            [cheshire.core :refer [generate-string parse-string]]
             [reitit.ring :as ring]
             [clj-http.client :as client]
             [clojure.tools.logging :as log]))

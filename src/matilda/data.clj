@@ -41,7 +41,7 @@
                                 create-literal
                                 create-property
                                 create-resource]]
-            [matilda.util :refer :all]
+            [matilda.util :refer [delete-dir! mk-path]]
             [matilda.queries :refer [make-query query-data]]
             [matilda.term :as term]))
 
