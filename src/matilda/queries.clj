@@ -52,7 +52,8 @@
       "PREFIX skos: <http://www.w3.org/2004/02/skos/core#>"
       "PREFIX rxnorm: <http://purl.bioontology.org/ontology/RXNORM/>"
       "PREFIX snomed: <http://purl.bioontology.org/ontology/SNOMEDCT/>"
-      "PREFIX obo: <http://www.geneontology.org/formats/oboInOwl#>"
+      "PREFIX obo: <http://purl.obolibrary.org/obo/>"
+      "PREFIX oboInOwl: <http://www.geneontology.org/formats/oboInOwl#>"
       "PREFIX umls: <http://bioportal.bioontology.org/ontologies/umls/>"
       ~(format "PREFIX matilda: <%s>" (cfg/get :matilda-ont-root))
       ~@(map to-prefix prefixes)

@@ -63,13 +63,15 @@
   [out-file]
   (with-open [out (io/writer out-file)]
     (with-dataset DbCon ReadWrite/READ
-      (let [model (.getDefaultModel DbCon)
+      (let [model (.getNamedModel DbCon "urn:x-arq:UnionGraph")
             query-str (make-query {}
                                   "{ ?iri rdfs:label ?label } "
                                   "UNION"
                                   "{ ?iri skos:prefLabel ?label }"
                                   "UNION"
-                                  "{ ?iri skos:altLabel ?label }")
+                                  "{ ?iri skos:altLabel ?label }"
+                                  "UNION"
+                                  "{ ?iri oboInOwl:hasExactSynonym ?label }")
             query (QueryFactory/create query-str)
             query-exec (QueryExecutionFactory/create query model)
             results (iterator-seq (.execSelect query-exec))]
@@ -94,13 +96,15 @@
 (defn get-and-write-terms-db!
   [db-spec]
   (with-dataset DbCon ReadWrite/READ
-    (let [model (.getDefaultModel DbCon)
+    (let [model (.getNamedModel DbCon "urn:x-arq:UnionGraph")
           query-str (make-query {}
                                 "{ ?iri rdfs:label ?label } "
                                 "UNION"
                                 "{ ?iri skos:prefLabel ?label }"
                                 "UNION"
-                                "{ ?iri skos:altLabel ?label }")
+                                "{ ?iri skos:altLabel ?label }"
+                                "UNION"
+                                "{ ?iri oboInOwl:hasExactSynonym ?label }")
           query (QueryFactory/create query-str)
           query-exec (QueryExecutionFactory/create query model)
           results (iterator-seq (.execSelect query-exec))]

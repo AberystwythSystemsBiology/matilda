@@ -209,6 +209,8 @@
 (def transformers
   {"int" (fn [transformer [tag field]]
            [:number (Integer. field)])
+   "string" (fn [transformer [tag field]]
+                [:string field])
    "decimal" (fn [transformer [tag field]]
                [:number (Double. field)])
    "list" (fn [transformer [tag field]]
