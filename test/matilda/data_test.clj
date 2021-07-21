@@ -1,5 +1,5 @@
 (ns matilda.data-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure.test :refer [deftest testing is]]
             [clojure.java.io :as io]
             [matilda.test-utils :refer [with-test-env
                                         create-temp-file
@@ -13,7 +13,7 @@
 ;; patient_id,gender,age,conditions,medications
 (def transformer-csv-simple
   [{"col" "age"
-    "predicate" "http://www.ebi.ac.uk/efo/EFO_0000246"
+    "predicate" mdata/age-iri
     "filters" [{"name" "int" "args" {}}]}
    {"col" "gender"
     "predicate" mdata/sex-iri

@@ -12,7 +12,7 @@
             [matilda.data :as mdata]
             [matilda.db :as mdb]
             [matilda.ontologies :as mont]
-            [matilda.util :refer :all]
+            [matilda.util :refer [mk-path delete-dir!]]
             [matilda.term :as mterm]
             [clojure.string :as str]))
 
@@ -95,10 +95,8 @@
 
 (defmacro with-test-env
   [conf ontologies & body]
-  `(let [test-env# (setup-test-env ~conf ~ontologies)
-         res# (do ~@body)]
-     (destroy-test-env test-env#)
-     res#))
+  `(let [test-env# (setup-test-env ~conf ~ontologies)]
+     (try ~@body (finally (destroy-test-env test-env#)))))
 
 (defn create-temp-file
   []
@@ -180,4 +178,6 @@
 (defn create-test-data-files
   [dir]
   (let [patients (read-json-file test-data-json)]
+    (io/make-parents dir)
+    (.mkdir (io/file dir))
     (create-test-data-csv-simple patients dir)))
