@@ -72,6 +72,9 @@
 
 (defn setup-test-env
   [conf ontologies]
+  "Creates a test environment, merging a default config 
+   (created with `create-test-config`) with the supplied one,
+   then loading the ontologies (of the form [[file-name namespace]])"
   (let [test-conf (create-test-config (mk-tmp) conf)
         {:keys [tdb-dir term-dir data-dir]} test-conf]
     (.mkdir (io/file data-dir))

@@ -208,11 +208,11 @@
 
 (def transformers
   {"int" (fn [transformer [tag field]]
-           [:number (Integer. field)])
+           [:int (Integer. field)])
    "string" (fn [transformer [tag field]]
                 [:string field])
    "decimal" (fn [transformer [tag field]]
-               [:number (Double. field)])
+               [:decimal (Double. field)])
    "list" (fn [transformer [tag field]]
              [:list (map #(list :string (str/trim %1)) (str/split field #"[;,]"))])
    "map" (fn [transformer [tag field]]

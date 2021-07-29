@@ -58,6 +58,7 @@
                  [org.apache.logging.log4j/log4j-slf4j-impl "2.12.1"]
                  [com.grammarly/omniconf "0.4.3"]
                  [org.xerial/sqlite-jdbc "3.32.3.2"]]
+  :dev-dependencies [[cheshire "5.10.0"]]
   :jvm-opts ["-Xmx10g"]
   :main ^:skip-aot matilda.core
   :target-path "target/%s"

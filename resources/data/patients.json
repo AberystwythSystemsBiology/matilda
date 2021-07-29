@@ -1,0 +1,93 @@
+[
+    {
+        "id": "1",
+        "gender": "m",
+        "age": 60,
+        "conditions": ["heart disease", "diabetes type II"],
+        "medications": ["insulin"]
+    },
+    {
+        "id": "2",
+        "gender": "f",
+        "age": 30,
+        "conditions": ["copd"],
+        "medications": ["salbutamol", "ipratropium"]
+    },
+    {
+        "id": "3",
+        "gender": "m",
+        "age": 22,
+        "conditions": ["diabetes type I"],
+        "medications": ["insulin"]
+    },
+    {
+        "id": "4",
+        "gender": "m",
+        "age": 46,
+        "conditions": ["lung cancer"],
+        "medications": ["morphine"]
+    },
+    {
+        "id": "5",
+        "gender": "f",
+        "age": 59,
+        "conditions": ["chronic kidney disease"],
+        "medications": ["dapagliflozin"]
+    },
+    {
+        "id": "6",
+        "gender": "m",
+        "age": 33,
+        "conditions": ["chronic obstructive lung disease"],
+        "medications": ["salbutamol"]
+    },
+    {
+        "id": "7",
+        "gender": "f",
+        "age": 31,
+        "conditions": ["copd"],
+        "medications": ["terbutaline"]
+    },
+    {
+        "id": "8",
+        "gender": "m",
+        "age": 72,
+        "conditions": ["heart disease"],
+        "medications": ["amlodipine", "morphine"]
+    },
+    {
+        "id": "9",
+        "gender": "f",
+        "age": 80,
+        "conditions": ["diabetes type II"],
+        "medications": ["insulin", "sertraline"]
+    },
+    {
+        "id": "10",
+        "gender": "f",
+        "age": 19,
+        "conditions": ["chronic kidney disease"],
+        "medications": ["morphine", "dapagliflozin"]
+    },
+    {
+        "id": "11",
+        "gender": "m",
+        "age": 28,
+        "conditions": ["diabetes type I"],
+        "medications": ["insulin"]
+    },
+    {
+        "id": "12",
+        "gender": "m",
+        "age": 45,
+        "conditions": ["heart disease", "diabetes type II"],
+        "medications": ["insulin"]
+    },
+    {
+        "id": "13",
+        "gender": "m",
+        "age": 68,
+        "conditions": ["copd", "heart disease", "diabetes type II"],
+        "medications": ["insulin", "salbutamol"]
+    }
+]

@@ -1,16 +1,21 @@
 (ns matilda.data-test
   (:require [clojure.test :refer [deftest testing is]]
             [clojure.java.io :as io]
-            [matilda.test-utils :refer [with-test-env
+            [clojure.set :as set]
+            [clojure.string :as str]
+            [clojure.pprint :refer [pprint]]
+            [matilda.test-utils :refer [read-json-file
+                                        with-test-env
                                         create-temp-file
                                         matilda-test-path
                                         matilda-test-url
                                         create-test-data-files
                                         test-data-out]]
+            [matilda.queries :refer [query-data make-query]]
             [matilda.core :refer :all]
             [matilda.data :as mdata]))
 
-;; patient_id,gender,age,conditions,medications
+
 (def transformer-csv-simple
   [{"col" "age"
     "predicate" mdata/age-iri
@@ -28,6 +33,62 @@
     "filters" [{"name" "list" "args" {}}
                {"name" "map" "filters" [{"name" "lookup"
                                          "args" {}}]}]}])
+
+(def test-labels
+  {"amlodipine" "amlodipine"
+   "chronic kidney disease" "kidney_disease"
+   "chronic obstructive lung disease" "copd"
+   "copd" "copd"
+   "dapagliflozin" "dapagliflozin"
+   "diabetes type i" "diabetes_type_1"
+   "diabetes type ii" "diabetes_type_2"
+   "heart disease" "heart_disease"
+   "insulin" "insulin"
+   "ipratropium" "ipratropium_bromide"
+   "lung cancer" "lung_cancer"
+   "morphine" "morphine"
+   "salbutamol" "albuterol"
+   "sertraline" "sertraline"
+   "terbutaline" "terbutaline"})
+
+(defn test-lookup
+  [term]
+  (as-> term $r
+    (str/lower-case $r)
+    (get test-labels $r)
+    (format "%s%s" matilda-test-url $r)))
+
+(defn mk-test-triple
+  [s p o]
+  {"?s" s "?p" p "?o" o})
+
+(defn mk-base-dataset-triples
+  [d-id d-name d-desc rawfile-name]
+  (let [d-iri (format "%s#%s" (mdata/dataset-root d-id) d-id)
+        metainfo-triple (partial mk-test-triple d-iri)]
+    (set [(metainfo-triple "http://purl.org/dc/elements/1.1/title" d-name)
+          (metainfo-triple "http://purl.org/dc/elements/1.1/description" d-desc)
+          (metainfo-triple (mdata/id-iri) d-id)
+          (metainfo-triple (mdata/rawfile-iri) rawfile-name)
+          (metainfo-triple "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+                           (mdata/dataset-iri))])))
+
+(defn mk-patient-triples
+  [dataset-id patient]
+  (let [iri (format "%s#%s" (mdata/dataset-root dataset-id) (get patient "id"))
+        mk-pat-triple (partial mk-test-triple iri)]
+    (concat
+     [(mk-pat-triple mdata/subject-ont-iri (get patient "id"))
+      (mk-pat-triple mdata/sex-iri (get patient "gender"))
+      (mk-pat-triple mdata/age-iri (get patient "age"))]
+     (map #(mk-pat-triple mdata/condition-iri (test-lookup %))
+          (get patient "conditions"))
+     (map #(mk-pat-triple mdata/drug-iri (test-lookup %))
+          (get patient "medications")))))
+
+(defn mk-all-patient-triples
+  [dataset-id patients]
+  (set (reduce #(concat %1 (mk-patient-triples dataset-id %2)) [] patients)))
 
 (deftest list-datasets-test
   (testing "Can list datasets"
@@ -91,49 +152,27 @@
          (= (first (mdata/dataset-rawfiles id))
             (.getName raw-file)))))))
 
+;; TODO:
+;; * Stringify patient ID
 (deftest convert-data-test
   (testing "Can convert & annotate simple dataset"
     (with-test-env {} [[matilda-test-path matilda-test-url]]
        (let [id "testset"
              title "Test Dataset"
-             desc "test desc"]
+             desc "test desc"
+             rawfile-name "simple.csv"
+             patients (read-json-file (io/file "resources" "data" "patients.json"))
+             base-triples (mk-base-dataset-triples id title desc rawfile-name)
+             patient-triples (mk-all-patient-triples id patients)
+             expected-triples (set/union base-triples patient-triples)
+             ont-triples (set (query-data (make-query {} "?s ?p ?o")))]
          (mdata/create-dataset id title desc)
          (create-test-data-files test-data-out)
-         (mdata/add-raw-to-dataset id (io/file test-data-out "simple.csv"))
-         (is (= (first (mdata/dataset-rawfiles id))
-                "simple.csv"))))))
-
-
-;; TODO
-;; test conversion data
-;; lum data as baseline comparison
-
-
-;; upload raw dataset?
-;; add datasets to named graph:
-;;   root graph node denotes dataset + meta w/ dc: ns assertions e.g.:
-;;     {
-;;       ?ont rdf:type ns:dataset .
-;;       ?ont dc:title "Dataset Name" .
-;;       ?ont dc:description "Dataset description" .
-;;       ?ont ns:id "some-dataset-id"
-;;     }
-;;     where ?ont ~ "https://example.org/datasets/<id>"
-;;
-;; add simple dataset, test exists in list
-;; add complex dataset, query properly annotated
-;; list datasets
-;; delete a dataset
-;; get a dataset
-;;
-;; MATILDA ontology for internal data representation
-;; $matilda/terminology#
-;;   #Dataset - class
-
-;; dron
-;; ~/ontologies/dron-full.owl
-;; http://purl.obolibrary.org/obo/dron.owl#
-;;
-;; doid
-;; ~/ontologies/doid.owl
-;; http://purl.obolibrary.org/obo/doid.owl#
+         (mdata/add-raw-to-dataset id (io/file test-data-out rawfile-name))
+         (mdata/convert-data "testset" 
+                             (io/file rawfile-name)
+                             "id"
+                             transformer-csv-simple)
+         (is (= expected-triples
+                (set/difference (set (query-data (make-query {} "?s ?p ?o")))
+                                ont-triples)))))))

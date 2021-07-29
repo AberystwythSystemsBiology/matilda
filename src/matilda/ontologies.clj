@@ -31,6 +31,7 @@
   (:gen-class)
   (:import [org.apache.jena.query Dataset ReadWrite])
   (:require [clojure.string :as s]
+            [clojure.java.io :as io]
             [mount.core :refer [defstate]]
             [omniconf.core :as cfg]
             [matilda.config :refer [ConfMgr]]
@@ -71,7 +72,7 @@
   [file-name url]
   (with-dataset DbCon ReadWrite/WRITE
     (let [model (.getNamedModel DbCon url)]
-      (with-open [r (clojure.java.io/input-stream file-name)]
+      (with-open [r (io/input-stream file-name)]
         (.read model r url)
         nil))))
 
