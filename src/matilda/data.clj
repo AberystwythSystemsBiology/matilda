@@ -41,13 +41,10 @@
                                 create-literal
                                 create-property
                                 create-resource]]
-            [matilda.util :refer [delete-dir! mk-path]]
+            [matilda.util :refer [delete-dir! mk-path mk-matilda-term]]
             [matilda.queries :refer [make-query query-data]]
             [matilda.term :as term]))
 
-(defn mk-matilda-term
-  [term]
-  (format "%s%s" (cfg/get :matilda-ont-root) term))
 
 (defn dataset-iri [] (mk-matilda-term "dataset"))
 (defn id-iri [] (mk-matilda-term "id"))

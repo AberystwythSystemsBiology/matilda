@@ -1,6 +1,8 @@
 (ns matilda.util
   (:import [java.nio.file Files FileSystems])
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io]
+            [clojure.data.xml :as xml]
+            [omniconf.core :as cfg]))
 
 (defn mk-path
   [path-parts]
@@ -31,3 +33,7 @@
   [dir-name]
   (doseq [f (reverse (build-file-list dir-name))]
     (.delete f)))
+
+(defn mk-matilda-term
+  [term]
+  (format "%s%s" (cfg/get :matilda-ont-root) term))
