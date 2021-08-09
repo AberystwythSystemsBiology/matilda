@@ -147,14 +147,16 @@
       results)))
 
 (defn query-db
-  [query-str]
-  (with-dataset DbCon ReadWrite/READ
-    (let [model (.getNamedModel DbCon "urn:x-arq:UnionGraph")
-          query (QueryFactory/create query-str)
-          query-exec (QueryExecutionFactory/create query model)
-          results (iterator-seq (.execSelect query-exec))
-          mapped-results (map result->map results)]
-      (doall mapped-results))))
+  ([query-str graph-name]
+   (with-dataset DbCon ReadWrite/READ
+     (let [model (.getNamedModel DbCon graph-name)
+           query (QueryFactory/create query-str)
+           query-exec (QueryExecutionFactory/create query model)
+           results (iterator-seq (.execSelect query-exec))
+           mapped-results (map result->map results)]
+       (doall mapped-results))))
+  ([query-str]
+   (query-db query-str "urn:x-arq:UnionGraph")))
 
 (defn query-db-as-json
   [query-str]

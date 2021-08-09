@@ -62,8 +62,10 @@
       "}")))
 
 (defn query-data
-  [query-str]
-  (query-db query-str))
+  ([query-str]
+   (query-db query-str))
+  ([query-str graph]
+   (query-db query-str graph)))
 
 (defn query-data-j
   [query-str]
