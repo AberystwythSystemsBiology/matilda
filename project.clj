@@ -43,6 +43,7 @@
                  [org.clojure/tools.trace "0.7.9"]
                  [org.clojure/data.csv "0.1.4"]
                  [org.clojure/data.json "0.2.6"]
+                 [org.clojure/data.xml "0.0.8"]
                  [org.apache.jena/apache-jena-libs "3.10.0" :extension "pom"]
                  [clj-http "3.10.1"]
                  [ring/ring-core "1.6.3"]
@@ -59,7 +60,7 @@
                  [com.grammarly/omniconf "0.4.3"]
                  [org.xerial/sqlite-jdbc "3.32.3.2"]]
   :dev-dependencies [[cheshire "5.10.0"]]
-  :jvm-opts ["-Xmx10g"]
+  :jvm-opts ["-Xmx20g" "-Xms20g"]
   :main ^:skip-aot matilda.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})

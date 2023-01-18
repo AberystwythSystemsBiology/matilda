@@ -44,7 +44,7 @@
 (defn ontology-download-handler
   [request]
   (let [url (get-in request [:body "url"])]
-    (ont/load-ontology-by-url url)
+    ;; (ont/load-ontology-by-url url)
     {:status 200}))
 
 ;; TODO: download with ID

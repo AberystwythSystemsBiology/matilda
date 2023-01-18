@@ -31,7 +31,7 @@
 (ns matilda.queries
   (:gen-class)
   (:require [omniconf.core :as cfg]
-            [clojure.string :refer [join]]
+            [clojure.string :as str]
             [matilda.db :refer [query-db 
                                 query-db-coalesce
                                 query-db-group
@@ -44,7 +44,7 @@
 (defn make-query
   [prefixes
    & chonks]
-  (join "\n"
+  (str/join "\n"
     `("PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>"
       "PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>"
       "PREFIX owl: <http://www.w3.org/2002/07/owl#>"
@@ -54,7 +54,8 @@
       "PREFIX snomed: <http://purl.bioontology.org/ontology/SNOMEDCT/>"
       "PREFIX obo: <http://purl.obolibrary.org/obo/>"
       "PREFIX oboInOwl: <http://www.geneontology.org/formats/oboInOwl#>"
-      "PREFIX umls: <http://bioportal.bioontology.org/ontologies/umls/>"
+      "PREFIX umls: <https://identifiers.org/umls:>"
+      "PREFIX vandf: <http://purl.bioontology.org/ontology/VANDF/>"
       ~(format "PREFIX matilda: <%s>" (cfg/get :matilda-ont-root))
       ~@(map to-prefix prefixes)
       "SELECT * WHERE {"
@@ -179,8 +180,42 @@
                                        objs)}])
                     (group-by first obj-stmts)))}))
 
-(defn cui->uri
+(defn cui->uris
   [cui]
-  (let [cui-res (query-data (make-query {} (format "?iri umls:cui \"%s\"" cui)))]
-    (when cui-res
-      (get (first cui-res) "?iri"))))
+  (let [cui-res (query-data (make-query {} (format "?iri umls:has_cui \"%s\"" cui)))]
+    (when (seq cui-res)
+      (map #(get % "?iri") cui-res))))
+
+(defn uri->cui
+  [uri]
+  (let [uri-res (query-data (make-query {} (format "<%s> umls:has_cui ?cui" uri)))]
+    (when (seq uri-res)
+      (get (first uri-res) "?cui"))))
+
+(defn uri->tuis
+  [uri]
+  (let [uri-res (query-data (make-query {} (format "<%s> umls:has_tui ?tui" uri)))]
+    (when (seq uri-res)
+      (set (map #(get % "?tui") uri-res)))))
+
+(defn code->cui
+  [relation ontology-url-match code]
+  (->> code
+       (format "?url %s \"%s\" . ?url umls:has_cui ?cui" relation)
+       (make-query {})
+       query-data
+       (filter #(str/includes? (get % "?url") ontology-url-match))
+       first
+       (#(get % "?cui"))))
+
+(defn icd9->cui
+  [code]
+  (code->cui "skos:notation" "ontology/ICD9" code))
+
+(defn icd10->cui
+  [code]
+  (code->cui "skos:notation" "ontology/ICD10" code))
+
+(defn ndc->cui
+  [code]
+  (code->cui "vandf:NDC" "ontology/VANDF" code))

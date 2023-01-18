@@ -137,6 +137,17 @@
   [id results]
   (group-by #(get %1 id) results))
 
+(defn query-db-notrans
+  ([query-str graph-name]
+   (let [model (.getNamedModel DbCon graph-name)
+         query (QueryFactory/create query-str)
+         query-exec (QueryExecutionFactory/create query model)
+         results (iterator-seq (.execSelect query-exec))
+         mapped-results (map result->map results)]
+     mapped-results))
+  ([query-str]
+   (query-db-notrans query-str "urn:x-arq:UnionGraph")))
+
 (defn query-db-raw
   [query-str]
   (with-dataset DbCon ReadWrite/READ

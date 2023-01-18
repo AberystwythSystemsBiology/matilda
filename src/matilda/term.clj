@@ -35,6 +35,7 @@
   (:require [clojure.data.csv :as csv]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [clojure.string :as str]
             [mount.core :refer [defstate]]
             [clojure.java.io :as io]
             [omniconf.core :as cfg]
@@ -42,10 +43,6 @@
             [matilda.db :refer [DbCon with-dataset result->map]]
             [matilda.queries :refer [query-data make-query]]))
 
-
-(def root-drug "http://purl.bioontology.org/ontology/SNOMEDCT/105590001")
-(def root-condition "http://purl.bioontology.org/ontology/SNOMEDCT/404684003")
-(def root-finding "http://purl.bioontology.org/ontology/SNOMEDCT/has_finding_site")
 
 (defn with-seqs [f dst q] 
   (loop [xs q] 
@@ -59,27 +56,6 @@
   [{iri "?iri" label "?label"}]
     [iri (.toLowerCase label)])
 
-(defn get-and-write-terms
-  [out-file]
-  (with-open [out (io/writer out-file)]
-    (with-dataset DbCon ReadWrite/READ
-      (let [model (.getNamedModel DbCon "urn:x-arq:UnionGraph")
-            query-str (make-query {}
-                                  "{ ?iri rdfs:label ?label } "
-                                  "UNION"
-                                  "{ ?iri skos:prefLabel ?label }"
-                                  "UNION"
-                                  "{ ?iri skos:altLabel ?label }"
-                                  "UNION"
-                                  "{ ?iri oboInOwl:hasExactSynonym ?label }")
-            query (QueryFactory/create query-str)
-            query-exec (QueryExecutionFactory/create query model)
-            results (iterator-seq (.execSelect query-exec))]
-        (as-> results r
-          (map result->map r)
-          (map result->csv-row r)
-          (csv/write-csv out r :separator \tab))))))
-
 (defn symspell-from-jdbc
   [db-spec]
   (reduce
@@ -92,6 +68,7 @@
     ["SELECT label FROM terms"]
     {:raw? true})))
 
+;; TODO: Delete table if not exists
 ;; db-s {:dbtype "sqlite" :dbname "/home/rob/matilda-dirs/clj/terms/terms.sqlite"}
 (defn get-and-write-terms-db!
   [db-spec]
@@ -127,9 +104,11 @@
 
 (def TermSearcher)
 
-(defn term-file
-  [file-name]
-  (format "%s/%s.json" (cfg/get :term-dir) file-name))
+(defn reload-terms
+  []
+  (let [db-spec (cfg/get :jdbc)]
+    (get-and-write-terms-db! db-spec)
+    (reset! TermSearcher (symspell-from-jdbc db-spec))))
 
 (defn init-terms
   []
@@ -161,12 +140,20 @@
   (let [term (.term term-obj)]
     {:uri (term->uri db-spec term) :label term}))
 
+(defn mk-fts5-term
+  [s]
+  (str/trim (str/replace s #"[^A-Za-z0-9 ]" " ")))
+
 (defn search-terms
   [term]
-  (let [dict-res (if (:symspell TermSearcher) 
-                   (.lookup (:symspell TermSearcher) term SymSpell.SymSpell$Verbosity/All)
-                   [])
-        sym-terms (map #(sym-term->term-pair (cfg/get :jdbc) %1) dict-res)
-        queried-items (query-terms (cfg/get :jdbc) term)
-        terms (distinct (concat sym-terms queried-items))]
-    terms))
+  (let [lower-term (str/lower-case term)
+        fts-safe-term (mk-fts5-term term)]
+    (if (> (.length fts-safe-term) 0)
+      (let [dict-res (if (:symspell TermSearcher)
+                       (.lookup (:symspell TermSearcher) lower-term SymSpell.SymSpell$Verbosity/All)
+                       [])
+            sym-terms (map #(sym-term->term-pair (cfg/get :jdbc) %1) dict-res)
+            queried-items (query-terms (cfg/get :jdbc) fts-safe-term)
+            terms (distinct (concat sym-terms queried-items))]
+        terms)
+      [])))

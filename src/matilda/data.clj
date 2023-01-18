@@ -34,6 +34,7 @@
   (:require [clojure.java.io :as io]
             [clojure.data.csv :as csv]
             [clojure.string :as str]
+            [clojure.pprint :refer [pprint]]
             [matilda.config :refer [ConfMgr]]
             [omniconf.core :as cfg]
             [matilda.db :refer [DbCon
@@ -42,7 +43,11 @@
                                 create-property
                                 create-resource]]
             [matilda.util :refer [delete-dir! mk-path mk-matilda-term]]
-            [matilda.queries :refer [make-query query-data]]
+            [matilda.queries :refer [make-query 
+                                     query-data
+                                     icd9->cui
+                                     icd10->cui
+                                     ndc->cui]]
             [matilda.term :as term]))
 
 
@@ -214,6 +219,14 @@
              [:list (map #(list :string (str/trim %1)) (str/split field #"[;,]"))])
    "map" (fn [transformer [tag field]]
            [:list (map (trans->comp (get transformer "filters")) field)])
+   "icd9" (fn [transformer [tag field]]
+            [:string (or (icd9->cui field) field)])
+   "icd10" (fn [transformer [tag field]]
+            [:string (or (icd10->cui field) field)])
+   "ndc" (fn [transformer [tag field]]
+            [:string (or (ndc->cui field) field)])
+   "template" (fn [transformer [tag field]] ;; TODO: better safer templating
+                [:relation (format (get transformer "template") field)])
    "lookup" (fn [transformer [tag field]]
               ;(clojure.pprint/pprint {:LOOKUP field})
               (let [completions (term/search-terms (str/lower-case field))]
@@ -277,7 +290,8 @@
        (rest csv-data)))
 
 (defn convert-data
-  [id raw-file id-col transforms]
+  "Given dataset ID, raw-file name, id template prefix and transforms, transform and store the data to a graph"
+  [id raw-file id-col id-str transforms]
   (let [raw-file (.toFile (mk-path [(dataset-rawdir id) (.getName raw-file)]))
         in-data (with-open [reader (io/reader raw-file)]
                   (csv-data->maps (doall (csv/read-csv reader))))
@@ -286,8 +300,9 @@
     (with-dataset DbCon ReadWrite/WRITE
       (do
         (doseq [row proc-data]
+          (pprint row)
           (let [model (.getNamedModel DbCon (format "datasets/%s" id))
-                resource (.createResource model (str root-uri "#" (second (get row subject-ont-iri))))
+                resource (.createResource model (str root-uri "#" id-str (second (get row subject-ont-iri))))
                 row-data (into {} (map (fn [[iri [tag data]]]
                                          (if (= tag :list)
                                            [iri data]

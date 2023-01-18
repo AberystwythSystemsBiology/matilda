@@ -31,7 +31,7 @@
 (ns matilda.routes.queries
   (:gen-class)
   (:require [matilda.term :refer [search-terms]]
-            [matilda.queries :refer [cui->uri
+            [matilda.queries :refer [cui->uris
                                      query-data
                                      query-data-j
                                      query-data-grouped
@@ -80,7 +80,7 @@
 (defn describe-cui-handler
   [request]
   (let [cui (get-in request [:path-params :cui])
-        uri (cui->uri cui)]
+        uri (first (cui->uris cui))]
     (if uri
       {:status 200
        :body (describe-item uri)}
